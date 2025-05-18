@@ -1,6 +1,7 @@
-werkzeug==2.0.3  # إصدار متوافق مع flask 2.0.3
+werkzeug==2.0.3
 flask==2.0.3
 python-telegram-bot[webhooks]==20.3
 requests==2.31.0
 pycountry==22.3.5
 gevent==21.12.0
+schedule==1.2.0  # أضف هذا السطر
