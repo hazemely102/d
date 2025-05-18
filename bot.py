@@ -5,16 +5,11 @@ import pycountry
 import logging
 import os
 from threading import Thread
-
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode, ChatAction
-
-from flask import Flask
+from flask import Flask, request
 import time
-
-
-
 
 # --- إعدادات التسجيل ---
 logging.basicConfig(
@@ -25,9 +20,10 @@ logger = logging.getLogger(__name__)
 
 # --- التوكن الخاص بالبوت ---
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+RENDER_APP_NAME = os.environ.get("RENDER_APP_NAME", "your-app-name")  # يجب تعيينه في إعدادات render
 
-# --- إعداد خادم الويب البسيط ---
-flask_app = Flask(__name__)  # ضروري للعمل مع Gunicorn
+# --- إعداد خادم الويب ---
+flask_app = Flask(__name__)
 
 @flask_app.route('/')
 def home():
@@ -37,11 +33,20 @@ def home():
 def health_check():
     return 'OK', 200
 
+@flask_app.route(f'/{BOT_TOKEN}', methods=['POST'])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), bot)
+    Thread(target=process_update, args=(update,)).start()
+    return 'OK', 200
+
+def process_update(update):
+    application.process_update(update)
+
 def run_webserver():
     port = int(os.environ.get("PORT", 8080))
     flask_app.run(host='0.0.0.0', port=port)
 
-# --- دالة تهريب Markdown V2 (عامة) ---
+# --- دالة تهريب Markdown V2 ---
 def escape_markdown_v2(text: str) -> str:
     if not isinstance(text, str):
         return str(text)
@@ -57,9 +62,6 @@ def get_country_name_from_code(code):
         return country.name if country else code
     except Exception:
         return code
-
-
-
 
 # --- دالة جلب معلومات تيك توك ---
 def get_tiktok_user_info(username):
@@ -251,19 +253,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     escaped_username_input = escape_markdown_v2(username_input)
     loading_message_text = f"⏳ جاري جلب المعلومات لـ '{escaped_username_input}'\\.\\.\\."
 
-    processing_message = None # قيمة افتراضية
+    processing_message = None
     try:
         processing_message = await update.message.reply_text(loading_message_text, parse_mode=ParseMode.MARKDOWN_V2)
     except Exception as e_loading_md:
         logger.error(f"Error sending loading message with Markdown: {e_loading_md}. Trying plain.")
         try:
-            processing_message = await update.message.reply_text(f"⏳ جاري جلب المعلومات لـ '{username_input}'...") # بدون تهريب إذا فشل الأول
+            processing_message = await update.message.reply_text(f"⏳ جاري جلب المعلومات لـ '{username_input}'...")
         except Exception as e_loading_plain:
             logger.error(f"FATAL: Could not send even plain loading message: {e_loading_plain}")
             await update.message.reply_text("⚠️ حدث خطأ فادح أثناء محاولة بدء طلبك. يرجى المحاولة مرة أخرى لاحقًا.")
             return
 
-    if not processing_message: # تحقق إضافي لضمان أن الرسالة أُرسلت
+    if not processing_message:
         logger.error("FATAL: processing_message is None after attempting to send. This should not happen.")
         await update.message.reply_text("⚠️ حدث خطأ داخلي غير متوقع (فشل إرسال رسالة الانتظار). يرجى المحاولة مرة أخرى.")
         return
@@ -283,13 +285,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Error editing message with Markdown: {e_edit_md}. Falling back to plain text.")
 
         plain_text_message = formatted_message
-        # إزالة التهريب المزدوج والتهريب الأحادي لبعض الأحرف
         chars_to_clean = r'_*[]()~`>#+-.=|{}!' 
         for char_esc in chars_to_clean:
             plain_text_message = plain_text_message.replace(f'\\{char_esc}', char_esc) 
 
-        # إزالة علامات التنسيق الرئيسية التي لا تزال موجودة
-        for char_md in ['*', '`', '~', '[', ']', '(', ')']: # قد تحتاج إلى تعديل هذه القائمة
+        for char_md in ['*', '`', '~', '[', ']', '(', ')']:
             plain_text_message = plain_text_message.replace(char_md, '')
 
         try:
@@ -302,7 +302,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e_edit_plain:
             logger.error(f"Error editing plain text message: {e_edit_plain}. Sending new message.")
             await update.message.reply_text(plain_text_message, disable_web_page_preview=True)
-
 
     if "error" not in user_info and user_info.get('profile_picture'):
         pic_url = user_info['profile_picture']
@@ -326,41 +325,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.error(f"Error sending photo with plain caption: {e_photo_plain}")
                 await update.message.reply_text(f"❌ فشل في إرسال الصورة. التعليق: {caption_plain}")
 
-# --- الدالة الرئيسية لتشغيل البوت ---
-def run_bot_app():
-    if not BOT_TOKEN:
-        critical_msg = "!!! توكن البوت (TELEGRAM_BOT_TOKEN) غير موجود. يرجى تعيينه كـ Secret. !!!"
-        logger.critical(critical_msg)
-        print(critical_msg)
-        return
-
-    logger.info("🚀 البوت قيد التشغيل...")
-    print("🚀 البوت قيد التشغيل...")
-    application = Application.builder().token(BOT_TOKEN).build()
-
-    application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-    application.run_polling()
-    logger.info("البوت توقف.")
-    print("البوت توقف.")
-
-# أضف هذه الدالة في قسم الدوال المساعدة
+# --- نظام الإبقاء على النشاط ---
 def keep_alive():
     while True:
         try:
-            requests.get("https://d-b7ad.onrender.com/healthz")
+            requests.get(f"https://{RENDER_APP_NAME}.onrender.com/healthz")
             logger.info("تم إرسال نبضة حياة 🫀")
         except Exception as e:
             logger.error(f"فشل في إرسال النبضة: {e}")
         time.sleep(300)  # كل 5 دقائق
 
-# عدل الجزء الرئيسي في نهاية الكود كما يلي:
+# --- إعداد التطبيق الرئيسي ---
+application = Application.builder().token(BOT_TOKEN).build()
+application.add_handler(CommandHandler("start", start_command))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+# --- الدالة الرئيسية ---
 if __name__ == '__main__':
     if not BOT_TOKEN:
         print("!!! يلزم تعيين توكن البوت أولاً !!!")
     else:
-        # تشغيل خادم الويب
+        # تشغيل خادم الويب في خيط منفصل
         web_thread = Thread(target=run_webserver, daemon=True)
         web_thread.start()
         
@@ -368,5 +353,12 @@ if __name__ == '__main__':
         heartbeat_thread = Thread(target=keep_alive, daemon=True)
         heartbeat_thread.start()
         
-        # تشغيل البوت الرئيسي
-        run_bot_app()
+        # تعيين webhook وتشغيل البوت
+        webhook_url = f"https://{RENDER_APP_NAME}.onrender.com/{BOT_TOKEN}"
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=int(os.environ.get("PORT", 8080)),
+            url_path=BOT_TOKEN,
+            webhook_url=webhook_url,
+            cert=None  # لا نحتاج شهادة SSL لأن render.com يوفرها
+        )
