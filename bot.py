@@ -349,7 +349,7 @@ def run_bot_app():
 def keep_alive():
     while True:
         try:
-            requests.get("https://YOUR_SERVICE_NAME.onrender.com/healthz")
+            requests.get("https://d-b7ad.onrender.com/healthz")
             logger.info("تم إرسال نبضة حياة 🫀")
         except Exception as e:
             logger.error(f"فشل في إرسال النبضة: {e}")
