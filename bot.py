@@ -13,9 +13,6 @@ from telegram.constants import ParseMode, ChatAction
 from flask import Flask
 
 
-@flask_app.route('/healthz')
-def health_check():
-    return 'OK', 200
 
 
 # --- إعدادات التسجيل ---
@@ -34,6 +31,10 @@ flask_app = Flask(__name__)  # ضروري للعمل مع Gunicorn
 @flask_app.route('/')
 def home():
     return "Bot is alive and running!"
+
+@flask_app.route('/healthz')
+def health_check():
+    return 'OK', 200
 
 def run_webserver():
     port = int(os.environ.get("PORT", 8080))
