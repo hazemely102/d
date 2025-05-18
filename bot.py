@@ -60,34 +60,7 @@ def get_country_name_from_code(code):
 
 
 
-# أضف في الأعلى مع باقي الاستيرادات
-import time
 
-# أضف هذه الدالة في قسم الدوال المساعدة
-def keep_alive():
-    while True:
-        try:
-            requests.get("https://d-b7ad.onrender.com/healthz")
-            logger.info("تم إرسال نبضة حياة 🫀")
-        except Exception as e:
-            logger.error(f"فشل في إرسال النبضة: {e}")
-        time.sleep(300)  # كل 5 دقائق
-
-# عدل الجزء الرئيسي في نهاية الكود كما يلي:
-if __name__ == '__main__':
-    if not BOT_TOKEN:
-        print("!!! يلزم تعيين توكن البوت أولاً !!!")
-    else:
-        # تشغيل خادم الويب
-        web_thread = Thread(target=run_webserver, daemon=True)
-        web_thread.start()
-        
-        # تشغيل نظام الإبقاء على النشاط
-        heartbeat_thread = Thread(target=keep_alive, daemon=True)
-        heartbeat_thread.start()
-        
-        # تشغيل البوت الرئيسي
-        run_bot_app()
 # --- دالة جلب معلومات تيك توك ---
 def get_tiktok_user_info(username):
     if username.startswith('@'):
@@ -372,13 +345,28 @@ def run_bot_app():
     logger.info("البوت توقف.")
     print("البوت توقف.")
 
+# أضف هذه الدالة في قسم الدوال المساعدة
+def keep_alive():
+    while True:
+        try:
+            requests.get("https://YOUR_SERVICE_NAME.onrender.com/healthz")
+            logger.info("تم إرسال نبضة حياة 🫀")
+        except Exception as e:
+            logger.error(f"فشل في إرسال النبضة: {e}")
+        time.sleep(300)  # كل 5 دقائق
+
+# عدل الجزء الرئيسي في نهاية الكود كما يلي:
 if __name__ == '__main__':
     if not BOT_TOKEN:
-        print("!!! توكن البوت (TELEGRAM_BOT_TOKEN) غير موجود. يرجى تعيينه كـ Secret أولاً ثم إعادة تشغيل الـ Repl. !!!")
+        print("!!! يلزم تعيين توكن البوت أولاً !!!")
     else:
-        web_thread = Thread(target=run_webserver)
-        web_thread.daemon = True 
+        # تشغيل خادم الويب
+        web_thread = Thread(target=run_webserver, daemon=True)
         web_thread.start()
-        logger.info("🌐 خادم الويب الصغير يعمل في الخلفية...")
-        print("🌐 خادم الويب الصغير يعمل في الخلفية...")
+        
+        # تشغيل نظام الإبقاء على النشاط
+        heartbeat_thread = Thread(target=keep_alive, daemon=True)
+        heartbeat_thread.start()
+        
+        # تشغيل البوت الرئيسي
         run_bot_app()
