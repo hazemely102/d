@@ -5,7 +5,7 @@ import pycountry
 import logging
 import os
 from threading import Thread
-
+import time
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode, ChatAction
@@ -13,6 +13,27 @@ from telegram.constants import ParseMode, ChatAction
 from flask import Flask
 
 
+# أضف هذه الدالة في مكان مناسب
+def keep_alive():
+    while True:
+        try:
+            requests.get("https://d-b7ad.onrender.com/healthz")
+            logger.info("تم إرسال طلب إبقاء النشاط")
+        except Exception as e:
+            logger.error(f"فشل في إبقاء النشاط: {e}")
+        time.sleep(300)  # كل 5 دقائق
+
+# عدل الجزء الرئيسي ليصبح:
+if __name__ == '__main__':
+    web_thread = Thread(target=run_webserver)
+    web_thread.daemon = True
+    web_thread.start()
+    
+    keep_alive_thread = Thread(target=keep_alive)
+    keep_alive_thread.daemon = True
+    keep_alive_thread.start()
+    
+    run_bot_app()
 
 
 # --- إعدادات التسجيل ---
