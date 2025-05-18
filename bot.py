@@ -82,14 +82,15 @@ async def handle_tiktok_request(update: Update, context: ContextTypes.DEFAULT_TY
         if 'error' in user_info:
             return await processing_msg.edit_text(user_info['error'])
         
+# في دالة handle_tiktok_request، عدل الأسطر التالية:
         response = (
-            f"*👤 المستخدم:* {escape_markdown(user_info['username']}\n"
-            f"*📛 الاسم:* {escape_markdown(user_info['name']}\n"
+            f"*👤 المستخدم:* {escape_markdown(user_info['username'])}\n"  # أضيف ) هنا ▼
+            f"*📛 الاسم:* {escape_markdown(user_info['name'])}\n"        # وأيضاً هنا ▼
             f"*👥 المتابعون:* {user_info['followers']:,}\n"
             f"*❤️ الإعجابات:* {user_info['likes']:,}\n"
             f"*🎥 الفيديوهات:* {user_info['videos']:,}\n"
             f"*✅ موثق:* {'نعم' if user_info['verified'] else 'لا'}\n"
-            f"*📝 البايو:*\n{escape_markdown(user_info['bio'])}"
+            f"*📝 البايو:*\n{escape_markdown(user_info['bio'])}"         # وأضف ) هنا إذا كان هناك دالة
         )
         
         await processing_msg.edit_text(response, parse_mode=ParseMode.MARKDOWN_V2)
