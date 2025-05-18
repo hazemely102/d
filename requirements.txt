@@ -1,7 +1,5 @@
 flask==2.0.3
-werkzeug<3.0.0  # أضف هذا السطر
-pycountry==22.3.5
 requests==2.31.0
 python-telegram-bot==20.3
-gunicorn==20.1.0
+pycountry==22.3.5
 gevent==21.12.0
