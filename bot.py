@@ -355,10 +355,13 @@ if __name__ == '__main__':
         
         # تعيين webhook وتشغيل البوت
         webhook_url = f"https://{RENDER_APP_NAME}.onrender.com/{BOT_TOKEN}"
+        
+        # إعداد webhook
         application.run_webhook(
             listen="0.0.0.0",
             port=int(os.environ.get("PORT", 8080)),
             url_path=BOT_TOKEN,
             webhook_url=webhook_url,
-            cert=None  # لا نحتاج شهادة SSL لأن render.com يوفرها
+            cert=None,
+            drop_pending_updates=True
         )
