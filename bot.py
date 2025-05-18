@@ -12,6 +12,12 @@ from telegram.constants import ParseMode, ChatAction
 
 from flask import Flask
 
+
+@flask_app.route('/healthz')
+def health_check():
+    return 'OK', 200
+
+
 # --- إعدادات التسجيل ---
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
